@@ -213,3 +213,5 @@ CREATE TABLE Group_Preferred_Mechanic (
 	FOREIGN KEY (groupid) REFERENCES Group_Team (groupid),
 	FOREIGN KEY (mechanicid) REFERENCES Mechanic (mechanicid)
 );
+
+\q
