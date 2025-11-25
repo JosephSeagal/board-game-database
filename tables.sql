@@ -214,4 +214,22 @@ CREATE TABLE Group_Preferred_Mechanic (
 	FOREIGN KEY (mechanicid) REFERENCES Mechanic (mechanicid)
 );
 
+\i artist_data.sql
+\i designer_data.sql
+\i publisher_data.sql
+\i boardgame_data.sql
+\i genre_data.sql
+\i mechanic_data.sql
+\i game_genre_data.sql
+\i game_mechanic_data.sql
+\i single_user_data.sql
+\i group_team_data.sql
+\i in_group_data.sql
+\i favorite_game_data.sql
+\i preferred_genre_data.sql
+\i preferred_mechanic_data.sql
+\i designs_data.sql
+\i makes_art_data.sql
+\i publishes_data.sql
+
 \q
