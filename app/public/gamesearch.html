@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Board Game Search</title>
+    <link rel="stylesheet" type="text/css" href="css/navbar.css">
+</head>
+<body>
+    <nav class="navbar">
+        <ul class="navbar-menu">
+            <li><a href="gamesearch.html" class="navbar-item">Search Games</a></li>
+        </ul>
+    </nav>
+
+    <h1>Board Game Search</h1>
+
+    <p><a href="simplesearch.html">Search our catalog</a></p>
+
+    <h2>Search for board games</h2>
+
+    <div class="form">
+        <div>
+            <label for="keyword">Keyword:</label>
+            <input id="keyword" type="text" placeholder="Enter title or description">
+        </div>
+        <button id="searchButton">Search for Board Games</button>
+    </div>
+
+    <div id="boardgameMessage"></div>
+
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Title</th><th>Description</th><th>Min Players</th><th>Max Players</th><th>Avg Rating</th><th>Price</th><th>URL</th></tr>
+        </thead>
+        <tbody id="boardgames"></tbody>
+    </table>
+
+    <script>
+        function fetchAndDisplayGames(keyword) {
+            let table = document.getElementById("boardgames");
+            let message = document.getElementById("boardgameMessage");
+
+            table.textContent = "";
+            message.textContent = "";
+
+            let url = "/search/games?q=" + encodeURIComponent(keyword);
+
+            fetch(url)
+                .then((response) => response.json())
+                .then((body) => {
+                    if (!body.rows || body.rows.length === 0) {
+                        message.textContent = "No matching board games found.";
+                        return;
+                    }
+
+                    for (let item of body.rows) {
+                        let row = document.createElement("tr");
+                        for (let key of Object.keys(item)) {
+                            let col = document.createElement("td");
+
+                            if (item[key] === true) {
+                                col.textContent = "Yes";
+                            } else if (item[key] === false) {
+                                col.textContent = "No";
+                            } else {
+                                col.textContent = item[key];
+                            }
+                            row.appendChild(col);
+                        }
+                        table.appendChild(row);
+                    }
+                })
+                .catch((error) => {
+                    console.error(error);
+                    message.textContent = "Error fetching board games.";
+                });
+        }
+
+        document.getElementById("searchButton").addEventListener("click", () => {
+            let keyword = document.getElementById("keyword").value.trim();
+            fetchAndDisplayGames(keyword);
+        });
+
+    </script>
+
+</body>
+</html>

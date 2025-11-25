@@ -1,0 +1,33 @@
+body {
+    padding-top: 80px;
+}
+
+.navbar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    background-color: var(--background-color);
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    padding: 10px 0;
+}
+
+.navbar-menu {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    gap: 20px;
+}
+
+.navbar-item {
+    display: flex;
+    text-align: center;
+    color: var(--text-color);
+    font-size: 1.25rem;
+    font-weight: bold;
+    padding: 8px 16px;
+    text-decoration: none;
+}

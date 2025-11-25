@@ -1,6 +1,5 @@
 const express = require("express");
 const { Pool } = require("pg");
-const path = require("path");
 
 process.chdir(__dirname);
 
@@ -27,7 +26,7 @@ const databaseConfig = {
 
 const app = express();
 app.use(express.json());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static("public"));
 
 const pool = new Pool(databaseConfig);
 
@@ -36,14 +35,10 @@ pool.connect()
   .then(() => console.log("Connected to db"))
   .catch(err => console.error("DB connection error:", err));
 
-/*
-  KEEP EVERYTHING ABOVE HERE
-  ADD ENDPOINTS BELOW
-*/
 
 // GET /data endpoint
 app.get("/data", (req, res) => {
-    pool.query("SELECT title AS datum FROM boardgame ORDER BY gameid LIMIT 100").then(result => {
+    pool.query("SELECT name AS datum FROM single_user ORDER BY userid LIMIT 100").then(result => {
         // merge DB rows with any in-memory submissions
         const rows = result.rows.map(r => ({ datum: r.datum }));
         for (let d of extraData) rows.push({ datum: d });
@@ -55,6 +50,50 @@ app.get("/data", (req, res) => {
         return res.status(500).send({ data: rows });
     });
 });
+
+app.get("/search", (req, res) => {
+    let table = req.query.table;
+    let query = '';
+    let param = []
+
+    if(table === 'users') {
+        query = `SELECT * FROM single_user`;
+    }
+    if(table === 'clubs') {
+        query = `SELECT * FROM group_team`;
+    }
+  
+    pool.query(query, param)
+      .then((result) => {
+        console.log(result.rows);
+        return res.status(200).json({rows: result.rows})
+      })
+      .catch((error) => {
+        console.log(error)
+        return res.status(400).json({});
+          });
+});
+
+app.get("/search/games", async (req, res) => {
+  const q = req.query.q || "";
+
+  try {
+    const result = await pool.query(
+      `SELECT gameid, title, description, min_players, max_players, avg_rating, price, url
+       FROM boardgame
+       WHERE LOWER(title) LIKE LOWER($1)
+          OR LOWER(description) LIKE LOWER($1)
+       ORDER BY title`,
+      [`%${q}%`]
+    );
+
+    res.json({ rows: result.rows });
+  } catch (error) {
+    console.error(error);
+    res.sendStatus(500);
+  }
+});
+
 
 /*
   KEEP EVERYTHING BELOW HERE

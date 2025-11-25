@@ -3,7 +3,7 @@
 <head>
 	<meta charset="utf-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1">
-	<title>Demo</title>
+	<title>Board Game Database</title>
 	<style>
 		input, button {
 			display: block;
@@ -12,56 +12,58 @@
 	</style>
 </head>
 <body>
+	<a href="simplesearch.html" class="navbar-item">Search</a>
 
-<p>Enter some data:</p>
+	<p>Enter your username:</p>
 
-<input type="text" id="datum">
+	<input type="text" id="datum">
 
-<button id="submit">Submit</button>
+	<button id="submit">Submit</button>
 
-<p>All data:</p>
+	<p>All data:</p>
 
-<div id="data"></div>
+	<div id="data"></div>
 
-<script>
-let input = document.getElementById("datum");
-let button = document.getElementById("submit");
-let div = document.getElementById("data");
+	<script>
+		let input = document.getElementById("datum");
+		let button = document.getElementById("submit");
+		let div = document.getElementById("data");
 
-function populate() {
-	div.textContent = "";
-	fetch("/data").then(response => response.json()).then(body => {
-		let data = body.data;
-		if (data.length === 0) {
-			div.textContent = "No data yet"
-		} else {
-			for (let obj of data) {
-				let datumDiv = document.createElement("div")
-				datumDiv.textContent = obj.datum;
-				div.append(datumDiv);
-			}
+		function populate() {
+			div.textContent = "";
+			fetch("/data").then(response => response.json()).then(body => {
+				let data = body.data;
+				if (data.length === 0) {
+					div.textContent = "No data yet"
+				} else {
+					for (let obj of data) {
+						let datumDiv = document.createElement("div")
+						datumDiv.textContent = obj.datum;
+						div.append(datumDiv);
+					}
+				}
+			});
 		}
-	});
-}
 
-button.addEventListener("click", () => {
-	fetch("/datum", {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json"
-		},
-		body: JSON.stringify({datum: input.value})
-	}).then(response => {
-		return response.json();
-	}).then(body => {
+		button.addEventListener("click", () => {
+			fetch("/datum", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json"
+				},
+				body: JSON.stringify({datum: input.value})
+			}).then(response => {
+				return response.json();
+			}).then(body => {
+				populate();
+			}).catch(error => {
+				console.log(error);
+			})
+		});
+
 		populate();
-	}).catch(error => {
-		console.log(error);
-	})
-});
 
-populate();
-</script>
+	</script>
 
 </body>
 </html>

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>SimpleSearch</title>
+	<link rel="stylesheet" type="text/css" href="css/navbar.css">
+</head>
+<body>
+    <nav class="navbar">
+        <ul class="navbar-menu">
+            <li><a href="gamesearch.html" class="navbar-item">Search Games</a></li>
+        </ul>
+    </nav>
+
+<h1>Simple Search</h1>
+
+<h2>Search for users and groups</h2>
+
+<button id="userSubmit">Search for Users</button>
+
+<div id="userMessage"></div>
+
+<table>
+	<thead>
+		<tr><th>User ID</th><th>Name</th><th>Age</th><th>Budget</th></tr>
+	</thead>
+	<tbody id="users"></tbody>
+</table>
+
+<p></p>
+
+<button id="clubSubmit">Search for Groups</button>
+
+<div id="clubMessage"></div>
+
+<table>
+	<thead>
+		<tr><th>Group ID</th><th>Group Name</th><th>Age Limit</th><th>Budget</th</tr>
+	</thead>
+	<tbody id="bookclub"></tbody>
+</table>
+
+<p></p>
+
+<script>
+    function fetchAndDisplayData(tableId, messageId, url) {
+        let table = document.getElementById(tableId);
+        let message = document.getElementById(messageId);
+
+        table.textContent = '';
+        message.textContent = '';
+
+        fetch(url)
+            .then((response) => response.json())
+            .then((body) => {
+                console.log(body);
+                if (body.rows.length === 0) {
+                    message.textContent = "No data found";
+                    return;
+                }
+
+                for (let item of body.rows) {
+                    let row = document.createElement("tr");
+                    for (let key of Object.keys(item)) {
+                        let col = document.createElement("td");
+
+                        if (item[key] === true) {
+                            col.textContent = "Yes";
+                        } else if (item[key] === false) {
+                            col.textContent = "No";
+                        } else {
+                            col.textContent = item[key];
+                        }
+                        row.appendChild(col);
+                    }
+                    table.appendChild(row);
+                }
+            })
+            .catch((error) => {
+                console.error(error);
+                message.textContent = "An error occurred while fetching data.";
+            });
+    }
+
+    document.getElementById("userSubmit").addEventListener("click", () => {
+        fetchAndDisplayData("users", "userMessage", "/search?table=users");
+    });
+
+    document.getElementById("clubSubmit").addEventListener("click", () => {
+        fetchAndDisplayData("bookclub", "clubMessage", "/search?table=clubs");
+    });
+</script>
+
+</body>
+</html>
