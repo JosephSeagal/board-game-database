@@ -2,67 +2,169 @@
 <html>
 <head>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1">
 	<title>Board Game Database</title>
-	<style>
-		input, button {
-			display: block;
-			margin: 1rem 0;
-		}
-	</style>
+	<link rel="stylesheet" type="text/css" href="css/navbar.css">
 </head>
 <body>
-	<a href="simplesearch.html" class="navbar-item">Search</a>
+    <nav class="navbar">
+        <ul class="navbar-menu">
+			<li><a href="index.html" class="navbar-item">Join Groups</a></li>
+            <li><a href="gamesearch.html" class="navbar-item">Search Games</a></li>
+			<li><a href="simplesearch.html" class="navbar-item">Search Users/Groups</a></li>
+        </ul>
+    </nav>
 
-	<p>Enter your username:</p>
+	<h1>Group Information</h1>
 
-	<input type="text" id="datum">
+	<h2>Join a Group</h2>
 
-	<button id="submit">Submit</button>
+	<div class="form">
+		<div>
+			<label for="joinUsername">Username:</label>
+			<input id="joinUsername" type="text" placeholder="Enter your username">
+		</div>
 
-	<p>All data:</p>
+		<div>
+			<label for="joinGroupName">Available Groups:</label>
+			<select id="joinGroupName">
+				<option>Enter a username first</option>
+			</select>
+		</div>
 
-	<div id="data"></div>
+		<button id="joinGroupBtn">Join Group</button>
+	</div>
+
+	<div id="joinMessage"></div>
+
+	<h2>View Group Members</h2>
+
+	<label>Group:</label>
+	<select id="groupDropdown">
+		<option value="">-- Select a Group --</option>
+	</select>
+
+	<ul id="memberList"></ul>
+
 
 	<script>
-		let input = document.getElementById("datum");
-		let button = document.getElementById("submit");
-		let div = document.getElementById("data");
+		async function loadGroupsUserNotIn() {
+			const username = document.getElementById("joinUsername").value.trim();
+			const dropdown = document.getElementById("joinGroupName");
 
-		function populate() {
-			div.textContent = "";
-			fetch("/data").then(response => response.json()).then(body => {
-				let data = body.data;
-				if (data.length === 0) {
-					div.textContent = "No data yet"
-				} else {
-					for (let obj of data) {
-						let datumDiv = document.createElement("div")
-						datumDiv.textContent = obj.datum;
-						div.append(datumDiv);
-					}
+			dropdown.innerHTML = "";
+
+			if (!username) {
+				dropdown.innerHTML = `<option>Enter a username first</option>`;
+				return;
+			}
+
+			try {
+				const res = await fetch(`/groups/not-in?username=${encodeURIComponent(username)}`);
+				const groups = await res.json();
+
+				dropdown.innerHTML = "";
+
+				if (groups.length === 0) {
+					dropdown.innerHTML = `<option>No available groups</option>`;
+					return;
 				}
+
+				groups.forEach(g => {
+					let opt = document.createElement("option");
+					opt.value = g.group_name;
+					opt.textContent = g.group_name;
+					dropdown.appendChild(opt);
+				});
+			}
+			catch (err) {
+				console.error(err);
+				dropdown.innerHTML = `<option>Error loading groups</option>`;
+			}
+		}
+
+		// Trigger reload when username changes
+		document.getElementById("joinUsername").addEventListener("input", loadGroupsUserNotIn);
+
+		// Load at startup
+		window.addEventListener("DOMContentLoaded", loadGroupsUserNotIn);
+
+		// Handle join group submission
+		document.getElementById("joinGroupBtn").addEventListener("click", async () => {
+			const username = document.getElementById("joinUsername").value.trim();
+			const groupname = document.getElementById("joinGroupName").value;
+			const msg = document.getElementById("joinMessage");
+
+			msg.textContent = "Submitting...";
+
+			try {
+				const res = await fetch("/groups/join", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ username, groupname })
+				});
+
+				if (res.ok) {
+					msg.textContent = "Successfully joined group!";
+					loadGroupsUserNotIn(); // refresh unjoined groups
+				} else {
+					msg.textContent = "Failed to join group.";
+				}
+			}
+			catch (err) {
+				console.error(err);
+				msg.textContent = "Error joining group.";
+			}
+		});
+
+		// Load all groups for the dropdown
+		async function loadAllGroups() {
+			const dropdown = document.getElementById("groupDropdown");
+
+			dropdown.innerHTML = `<option value="">-- Select a Group --</option>`;
+
+			const response = await fetch("/groups");
+			const groups = await response.json();
+
+			groups.forEach(g => {
+				const option = document.createElement("option");
+				option.value = g.groupid;
+				option.textContent = g.group_name;
+				dropdown.appendChild(option);
 			});
 		}
 
-		button.addEventListener("click", () => {
-			fetch("/datum", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json"
-				},
-				body: JSON.stringify({datum: input.value})
-			}).then(response => {
-				return response.json();
-			}).then(body => {
-				populate();
-			}).catch(error => {
-				console.log(error);
-			})
+		// Load members of the selected group
+		async function loadGroupMembers(groupid) {
+			const memberList = document.getElementById("memberList");
+			memberList.innerHTML = "<li>Loading...</li>";
+
+			const response = await fetch(`/group-members?groupid=${groupid}`);
+			const members = await response.json();
+
+			memberList.innerHTML = ""; // clear
+
+			if (members.length === 0) {
+				memberList.innerHTML = "<li>No users in this group</li>";
+				return;
+			}
+
+			members.forEach(user => {
+				const li = document.createElement("li");
+				li.textContent = user.name;
+				memberList.appendChild(li);
+			});
+		}
+
+		// When user selects a group
+		document.getElementById("groupDropdown").addEventListener("change", (e) => {
+			const groupid = e.target.value;
+			if (groupid) {
+				loadGroupMembers(groupid);
+			}
 		});
 
-		populate();
-
+		// Initial load of all groups
+		window.addEventListener("DOMContentLoaded", loadAllGroups);
 	</script>
 
 </body>

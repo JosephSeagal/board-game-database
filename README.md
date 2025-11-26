@@ -4,7 +4,7 @@ A README explaining to the grader how to open and run your project. Include all 
 
 - `env.sample`: used as a sample for .env
 - `.env`: stores the credentials for the database login and password
-- `.gitignore`: tells GitHub to ignore the .env file when committing
+- `.gitignore`: tells GitHub to ignore the .env file and node_modules folder when committing
 - `package.json`: stores shorthand scripts for running the app locally
 - `tables.sql`: CREATE TABLE definitions and INSERT INTO statements
   - `artist_data.sql`: contains mock data for the INSERT INTO statements
@@ -24,6 +24,8 @@ A README explaining to the grader how to open and run your project. Include all 
   - `designs_data.sql`: contains mock data for the INSERT INTO statements
   - `makes_art_data.sql`: contains mock data for the INSERT INTO statements
   - `publishes_data.sql`: contains mock data for the INSERT INTO statements
+- `all_queries.sql`: contains all queries used in the application
+- All files under the `app/` folder: contains web-app frontend
 
 # Local Changes
 
