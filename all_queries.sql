@@ -40,3 +40,86 @@ SELECT u.userid, u.name
 FROM in_group ig
 JOIN single_user u ON ig.userid = u.userid
 WHERE ig.groupid = $1;
+
+-- Create a new user with generated userid
+INSERT INTO single_user (userid, name, age, budget)
+VALUES (
+	(SELECT COALESCE(MAX(userid), 0) + 1 FROM single_user),
+	$1, $2, $3
+)
+RETURNING userid, name, age, budget;
+
+-- Find a single user by userid, including favorite game, preferred genre, and preferred mechanic
+SELECT
+	u.userid,
+	u.name,
+	u.age,
+	u.budget,
+	(SELECT gameid FROM user_favorite_game WHERE userid = u.userid LIMIT 1) AS fav_gameid,
+	(SELECT genreid FROM user_preferred_genre WHERE userid = u.userid LIMIT 1) AS pref_genreid,
+	(SELECT mechanicid FROM user_preferred_mechanic WHERE userid = u.userid LIMIT 1) AS pref_mechanicid
+FROM single_user u
+WHERE u.userid = $1;
+
+-- Find a single user by name, including favorite game, preferred genre, and preferred mechanic
+SELECT
+	u.userid,
+	u.name,
+	u.age,
+	u.budget,
+	(SELECT gameid FROM user_favorite_game WHERE userid = u.userid LIMIT 1) AS fav_gameid,
+	(SELECT genreid FROM user_preferred_genre WHERE userid = u.userid LIMIT 1) AS pref_genreid,
+	(SELECT mechanicid FROM user_preferred_mechanic WHERE userid = u.userid LIMIT 1) AS pref_mechanicid
+FROM single_user u
+WHERE u.name = $1;
+
+-- Update user name or age
+UPDATE single_user
+SET name = $1,
+    age = $2
+WHERE userid = $3
+RETURNING userid, name, age, budget;
+
+-- Update budget for a user
+UPDATE single_user
+SET budget = $1
+WHERE userid = $2
+RETURNING userid, name, age, budget;
+
+-- Set favorite game for a user
+DELETE FROM user_favorite_game
+WHERE userid = $1;
+
+INSERT INTO user_favorite_game (userid, gameid)
+VALUES ($1, $2);
+
+-- Set preferred genre for a user
+DELETE FROM user_preferred_genre
+WHERE userid = $1;
+
+INSERT INTO user_preferred_genre (userid, genreid)
+VALUES ($1, $2);
+
+-- Set preferred mechanic for a user
+DELETE FROM user_preferred_mechanic
+WHERE userid = $1;
+
+INSERT INTO user_preferred_mechanic (userid, mechanicid)
+VALUES ($1, $2);
+
+-- Delete user and all referencing rows
+DELETE FROM in_group 
+WHERE userid = $1;
+
+DELETE FROM user_favorite_game 
+WHERE userid = $1;
+
+DELETE FROM user_preferred_genre
+WHERE userid = $1;
+
+DELETE FROM user_preferred_mechanic
+WHERE userid = $1;
+
+DELETE FROM single_user
+WHERE userid = $1
+RETURNING userid, name, age, budget;

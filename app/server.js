@@ -194,6 +194,269 @@ app.get("/group-members", async (req, res) => {
   }
 });
 
+// Create a new user
+app.post("/users/create", async (req, res) => {
+  const { name, age, budget } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: "Name is required." });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO single_user (userid, name, age, budget)
+      VALUES (
+        (SELECT COALESCE(MAX(userid), 0) + 1 FROM single_user),
+        $1, $2, $3
+      )
+      RETURNING userid, name, age, budget`,
+      [name, age, budget]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Create user error:", err);
+    res.status(500).json({ error: "Database error creating user." });
+  }
+});
+
+// Find a single user by id or name
+app.get("/users/find", async (req, res) => {
+	const { userid, username } = req.query;
+
+	if (!userid && !username) {
+		return res.status(400).json({ error: "userid or username is required." });
+	}
+
+	let params = [];
+	let whereClause = "";
+
+	if (userid) {
+		whereClause = "u.userid = $1";
+		params = [userid];
+	} else {
+		whereClause = "u.name = $1";
+		params = [username];
+	}
+
+	const query = `
+		SELECT
+			u.userid,
+			u.name,
+			u.age,
+			u.budget,
+			(SELECT gameid FROM user_favorite_game WHERE userid = u.userid LIMIT 1) AS fav_gameid,
+			(SELECT genreid FROM user_preferred_genre WHERE userid = u.userid LIMIT 1) AS pref_genreid,
+			(SELECT mechanicid FROM user_preferred_mechanic WHERE userid = u.userid LIMIT 1) AS pref_mechanicid
+		FROM single_user u
+		WHERE ${whereClause}
+	`;
+
+	try {
+		const result = await pool.query(query, params);
+		if (result.rows.length === 0) {
+			return res.json(null);
+		}
+		res.json(result.rows[0]);
+	} catch (err) {
+		console.error("Find user error:", err);
+		res.status(500).json({ error: "Database error finding user." });
+	}
+});
+
+// Update user info
+app.post("/users/update-info", async (req, res) => {
+	const { userid, name, age } = req.body;
+
+	if (!userid) {
+		return res.status(400).json({ error: "userid is required." });
+	}
+	if (!name && (age === undefined || age === null)) {
+		return res.status(400).json({ error: "Nothing to update (name or age required)." });
+	}
+
+	let sets = [];
+	let params = [];
+	let idx = 1;
+
+	if (name) {
+		sets.push(`name = $${idx++}`);
+		params.push(name);
+	}
+	if (age !== undefined && age !== null && age !== "") {
+		sets.push(`age = $${idx++}`);
+		params.push(age);
+	}
+
+	params.push(userid);
+
+	const query = `
+		UPDATE single_user
+		SET ${sets.join(", ")}
+		WHERE userid = $${idx}
+		RETURNING userid, name, age, budget
+	`;
+
+	try {
+		const result = await pool.query(query, params);
+		if (result.rowCount === 0) {
+			return res.status(404).json({ error: "User not found." });
+		}
+		res.json(result.rows[0]);
+	} catch (err) {
+		console.error("Update user info error:", err);
+		res.status(500).json({ error: "Database error updating user info." });
+	}
+});
+
+// Update user budget
+app.post("/users/update-budget", async (req, res) => {
+	const { userid, budget } = req.body;
+
+	if (!userid) {
+		return res.status(400).json({ error: "userid is required." });
+	}
+	if (budget === undefined || budget === null) {
+		return res.status(400).json({ error: "New budget is required." });
+	}
+
+	try {
+		const result = await pool.query(
+			`UPDATE single_user
+			SET budget = $1
+			WHERE userid = $2
+			RETURNING userid, name, age, budget`,
+			[budget, userid]
+		);
+
+		if (result.rowCount === 0) {
+			return res.status(404).json({ error: "User not found." });
+		}
+
+		res.json(result.rows[0]);
+	} catch (err) {
+		console.error("Update budget error:", err);
+		res.status(500).json({ error: "Database error updating budget." });
+	}
+});
+
+// Update user favorite game
+app.post("/users/set-favorite-game", async (req, res) => {
+	const { userid, gameid } = req.body;
+
+	if (!userid || !gameid) {
+		return res.status(400).json({ error: "userid and gameid are required." });
+	}
+
+	try {
+		await pool.query(
+			`DELETE FROM user_favorite_game
+			WHERE userid = $1`,
+			[userid]
+		);
+
+		await pool.query(
+			`INSERT INTO user_favorite_game (userid, gameid)
+			VALUES ($1, $2)`,
+			[userid, gameid]
+		);
+
+		res.json({ userid, gameid });
+	} catch (err) {
+		console.error("Set favorite game error:", err);
+		res.status(500).json({ error: "Database error setting favorite game." });
+	}
+});
+
+// Update user preferred genre
+app.post("/users/set-preferred-genre", async (req, res) => {
+	const { userid, genreid } = req.body;
+
+	if (!userid || !genreid) {
+		return res.status(400).json({ error: "userid and genreid are required." });
+	}
+
+	try {
+		await pool.query(
+			`DELETE FROM user_preferred_genre
+			WHERE userid = $1`,
+			[userid]
+		);
+
+		await pool.query(
+			`INSERT INTO user_preferred_genre (userid, genreid)
+			VALUES ($1, $2)`,
+			[userid, genreid]
+		);
+
+		res.json({ userid, genreid });
+	} catch (err) {
+		console.error("Set preferred genre error:", err);
+		res.status(500).json({ error: "Database error setting preferred genre." });
+	}
+});
+
+// Update user preferred mechanic
+app.post("/users/set-preferred-mechanic", async (req, res) => {
+	const { userid, mechanicid } = req.body;
+
+	if (!userid || !mechanicid) {
+		return res.status(400).json({ error: "userid and mechanicid are required." });
+	}
+
+	try {
+		await pool.query(
+			`DELETE FROM user_preferred_mechanic
+			WHERE userid = $1`,
+			[userid]
+		);
+
+		await pool.query(
+			`INSERT INTO user_preferred_mechanic (userid, mechanicid)
+			VALUES ($1, $2)`,
+			[userid, mechanicid]
+		);
+
+		res.json({ userid, mechanicid });
+	} catch (err) {
+		console.error("Set preferred mechanic error:", err);
+		res.status(500).json({ error: "Database error setting preferred mechanic." });
+	}
+});
+
+// Delete user
+app.post("/users/delete", async (req, res) => {
+	const { userid } = req.body;
+
+	if (!userid) {
+		return res.status(400).json({ error: "userid is required." });
+	}
+
+	try {
+		await pool.query(`DELETE FROM in_group WHERE userid = $1`, [userid]);
+		await pool.query(`DELETE FROM user_favorite_game WHERE userid = $1`, [userid]);
+		await pool.query(`DELETE FROM user_preferred_genre WHERE userid = $1`, [userid]);
+		await pool.query(`DELETE FROM user_preferred_mechanic WHERE userid = $1`, [userid]);
+
+		const result = await pool.query(
+			`DELETE FROM single_user
+			WHERE userid = $1
+			RETURNING userid, name, age, budget`,
+			[userid]
+		);
+
+		if (result.rowCount === 0) {
+			return res.status(404).json({ error: "User not found." });
+		}
+
+		res.json(result.rows[0]);
+
+	} catch (err) {
+		console.error("Delete user error:", err);
+		res.status(500).json({ error: "Database error deleting user." });
+	}
+});
+
 app.listen(port, host, () => {
   console.log(`Server running at http://${host}:${port}`);
 });

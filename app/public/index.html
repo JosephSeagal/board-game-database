@@ -1,171 +1,88 @@
 <!DOCTYPE html>
 <html>
 <head>
-	<meta charset="utf-8">
-	<title>Board Game Database</title>
-	<link rel="stylesheet" type="text/css" href="css/navbar.css">
+    <meta charset="utf-8">
+    <title>Board Game Search</title>
+    <link rel="stylesheet" type="text/css" href="css/navbar.css">
 </head>
 <body>
     <nav class="navbar">
         <ul class="navbar-menu">
-			<li><a href="index.html" class="navbar-item">Join Groups</a></li>
-            <li><a href="gamesearch.html" class="navbar-item">Search Games</a></li>
+			<li><a href="index.html" class="navbar-item">Search Games</a></li>
 			<li><a href="simplesearch.html" class="navbar-item">Search Users/Groups</a></li>
+			<li><a href="usermanagement.html" class="navbar-item">Manage Users</a></li>
+			<li><a href="groupmanagement.html" class="navbar-item">Manage Groups</a></li>
         </ul>
     </nav>
 
-	<h1>Group Information</h1>
+    <h1>Board Game Search</h1>
 
-	<h2>Join a Group</h2>
+    <h2>Search for board games</h2>
 
-	<div class="form">
-		<div>
-			<label for="joinUsername">Username:</label>
-			<input id="joinUsername" type="text" placeholder="Enter your username">
-		</div>
+    <div class="form">
+        <div>
+            <label for="keyword">Keyword:</label>
+            <input id="keyword" type="text" placeholder="Enter title or description">
+        </div>
+        <button id="searchButton">Search for Board Games</button>
+    </div>
 
-		<div>
-			<label for="joinGroupName">Available Groups:</label>
-			<select id="joinGroupName">
-				<option>Enter a username first</option>
-			</select>
-		</div>
+    <div id="boardgameMessage"></div>
 
-		<button id="joinGroupBtn">Join Group</button>
-	</div>
+    <table>
+        <thead>
+            <tr><th>ID</th><th>Title</th><th>Description</th><th>Min Players</th><th>Max Players</th><th>Avg Rating</th><th>Price</th><th>URL</th></tr>
+        </thead>
+        <tbody id="boardgames"></tbody>
+    </table>
 
-	<div id="joinMessage"></div>
+    <script>
+        function fetchAndDisplayGames(keyword) {
+            let table = document.getElementById("boardgames");
+            let message = document.getElementById("boardgameMessage");
 
-	<h2>View Group Members</h2>
+            table.textContent = "";
+            message.textContent = "";
 
-	<label>Group:</label>
-	<select id="groupDropdown">
-		<option value="">-- Select a Group --</option>
-	</select>
+            let url = "/search/games?q=" + encodeURIComponent(keyword);
 
-	<ul id="memberList"></ul>
+            fetch(url)
+                .then((response) => response.json())
+                .then((body) => {
+                    if (!body.rows || body.rows.length === 0) {
+                        message.textContent = "No matching board games found.";
+                        return;
+                    }
 
+                    for (let item of body.rows) {
+                        let row = document.createElement("tr");
+                        for (let key of Object.keys(item)) {
+                            let col = document.createElement("td");
 
-	<script>
-		async function loadGroupsUserNotIn() {
-			const username = document.getElementById("joinUsername").value.trim();
-			const dropdown = document.getElementById("joinGroupName");
+                            if (item[key] === true) {
+                                col.textContent = "Yes";
+                            } else if (item[key] === false) {
+                                col.textContent = "No";
+                            } else {
+                                col.textContent = item[key];
+                            }
+                            row.appendChild(col);
+                        }
+                        table.appendChild(row);
+                    }
+                })
+                .catch((error) => {
+                    console.error(error);
+                    message.textContent = "Error fetching board games.";
+                });
+        }
 
-			dropdown.innerHTML = "";
+        document.getElementById("searchButton").addEventListener("click", () => {
+            let keyword = document.getElementById("keyword").value.trim();
+            fetchAndDisplayGames(keyword);
+        });
 
-			if (!username) {
-				dropdown.innerHTML = `<option>Enter a username first</option>`;
-				return;
-			}
-
-			try {
-				const res = await fetch(`/groups/not-in?username=${encodeURIComponent(username)}`);
-				const groups = await res.json();
-
-				dropdown.innerHTML = "";
-
-				if (groups.length === 0) {
-					dropdown.innerHTML = `<option>No available groups</option>`;
-					return;
-				}
-
-				groups.forEach(g => {
-					let opt = document.createElement("option");
-					opt.value = g.group_name;
-					opt.textContent = g.group_name;
-					dropdown.appendChild(opt);
-				});
-			}
-			catch (err) {
-				console.error(err);
-				dropdown.innerHTML = `<option>Error loading groups</option>`;
-			}
-		}
-
-		// Trigger reload when username changes
-		document.getElementById("joinUsername").addEventListener("input", loadGroupsUserNotIn);
-
-		// Load at startup
-		window.addEventListener("DOMContentLoaded", loadGroupsUserNotIn);
-
-		// Handle join group submission
-		document.getElementById("joinGroupBtn").addEventListener("click", async () => {
-			const username = document.getElementById("joinUsername").value.trim();
-			const groupname = document.getElementById("joinGroupName").value;
-			const msg = document.getElementById("joinMessage");
-
-			msg.textContent = "Submitting...";
-
-			try {
-				const res = await fetch("/groups/join", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ username, groupname })
-				});
-
-				if (res.ok) {
-					msg.textContent = "Successfully joined group!";
-					loadGroupsUserNotIn(); // refresh unjoined groups
-				} else {
-					msg.textContent = "Failed to join group.";
-				}
-			}
-			catch (err) {
-				console.error(err);
-				msg.textContent = "Error joining group.";
-			}
-		});
-
-		// Load all groups for the dropdown
-		async function loadAllGroups() {
-			const dropdown = document.getElementById("groupDropdown");
-
-			dropdown.innerHTML = `<option value="">-- Select a Group --</option>`;
-
-			const response = await fetch("/groups");
-			const groups = await response.json();
-
-			groups.forEach(g => {
-				const option = document.createElement("option");
-				option.value = g.groupid;
-				option.textContent = g.group_name;
-				dropdown.appendChild(option);
-			});
-		}
-
-		// Load members of the selected group
-		async function loadGroupMembers(groupid) {
-			const memberList = document.getElementById("memberList");
-			memberList.innerHTML = "<li>Loading...</li>";
-
-			const response = await fetch(`/group-members?groupid=${groupid}`);
-			const members = await response.json();
-
-			memberList.innerHTML = ""; // clear
-
-			if (members.length === 0) {
-				memberList.innerHTML = "<li>No users in this group</li>";
-				return;
-			}
-
-			members.forEach(user => {
-				const li = document.createElement("li");
-				li.textContent = user.name;
-				memberList.appendChild(li);
-			});
-		}
-
-		// When user selects a group
-		document.getElementById("groupDropdown").addEventListener("change", (e) => {
-			const groupid = e.target.value;
-			if (groupid) {
-				loadGroupMembers(groupid);
-			}
-		});
-
-		// Initial load of all groups
-		window.addEventListener("DOMContentLoaded", loadAllGroups);
-	</script>
+    </script>
 
 </body>
 </html>

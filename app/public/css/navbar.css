@@ -1,5 +1,8 @@
 body {
     padding-top: 80px;
+    background-color: #f4f6f8;
+    max-width: 900px;
+    margin: 0 auto;
 }
 
 .navbar {
@@ -7,11 +10,12 @@ body {
     top: 0;
     left: 0;
     width: 100%;
-    background-color: var(--background-color);
+    background-color: #2d3e50;
     display: flex;
     justify-content: center;
     align-items: flex-start;
     padding: 10px 0;
+    color: #f4f6f8;
 }
 
 .navbar-menu {
@@ -30,4 +34,48 @@ body {
     font-weight: bold;
     padding: 8px 16px;
     text-decoration: none;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 10px;
+}
+
+table th, table td {
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+}
+
+button {
+    padding: 6px 12px;
+    margin-top: 8px;
+}
+
+input {
+    padding: 6px 12px;
+    margin-top: 8px;
+}
+
+hr {
+    margin-top: 16px;
+    margin-bottom: 16px;
+}
+
+#currentUserText {
+	color: green;
+	font-weight: bold;
+}
+
+.message {
+	font-size: 0.9rem;
+	margin-top: 4px;
+}
+
+.message.error {
+	color: #b00020;
+}
+
+.message.success {
+	color: #006400;
 }

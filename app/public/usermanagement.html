@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<title>User Management</title>
+	<link rel="stylesheet" type="text/css" href="css/navbar.css">
+</head>
+<body>
+	<nav class="navbar">
+		<ul class="navbar-menu">
+			<li><a href="index.html" class="navbar-item">Search Games</a></li>
+			<li><a href="simplesearch.html" class="navbar-item">Search Users/Groups</a></li>
+			<li><a href="usermanagement.html" class="navbar-item">Manage Users</a></li>
+			<li><a href="groupmanagement.html" class="navbar-item">Manage Groups</a></li>
+		</ul>
+	</nav>
+
+	<h1>User Management</h1>
+	<p>Use this page to create users, select an existing user, update their info, or delete them.</p>
+
+	<p>
+		<strong>Current Selected User:</strong>
+		<span id="currentUserText">None</span>
+	</p>
+
+	<hr>
+
+	<h2>Create a new user</h2>
+	<p>This will insert a new user into the database.</p>
+	<label for="newUserName">Name:</label>
+	<input id="newUserName" type="text">
+	<br>
+	<label for="newUserAge">Age (optional):</label>
+	<input id="newUserAge" type="number" min="0">
+	<br>
+	<label for="newUserBudget">Budget (optional):</label>
+	<input id="newUserBudget" type="number" min="0">
+	<br>
+	<button id="createUserButton">Create user</button>
+	<div id="createUserMessage" class="message"></div>
+
+	<hr>
+
+	<h2>Select existing user</h2>
+	<p>Enter an existing user ID or name. This user will be used for the actions below.</p>
+	<label for="selectedUserId">User ID:</label>
+	<input id="selectedUserId" type="number" min="1">
+	<label for="selectedUserName">or Name:</label>
+	<input id="selectedUserName" type="text">
+	<br>
+	<button id="loadUserButton">Load user info</button>
+	<div id="selectedUserInfo" class="message"></div>
+
+	<hr>
+
+	<h2>Update selected user's name/age</h2>
+	<p>Uses the selected user. Leave the field blank to keep it the same.</p>
+	<label for="updateName">New name:</label>
+	<input id="updateName" type="text">
+	<br>
+	<label for="updateAge">New age:</label>
+	<input id="updateAge" type="number" min="0">
+	<br>
+	<button id="updateInfoButton">Update name/age</button>
+	<div id="updateInfoMessage" class="message"></div>
+
+	<hr>
+
+	<h2>Update selected user's budget</h2>
+	<p>Uses the selected user. Leave the field blank to keep the current budget.</p>
+	<label for="updateBudget">New budget:</label>
+	<input id="updateBudget" type="number" min="0">
+	<br>
+	<button id="updateBudgetButton">Update budget</button>
+	<div id="updateBudgetMessage" class="message"></div>
+
+	<hr>
+
+	<h2>Selected user's favorites</h2>
+	<p>Uses the selected user. Leave the field blank to keep it the same.</p>
+	<label for="favGameId">Favorite game ID:</label>
+	<input id="favGameId" type="number" min="1">
+	<button id="setFavGameButton">Set favorite game</button>
+	<br>
+	<div id="favGameMessage" class="message"></div>
+	<label for="prefGenreId">Preferred genre ID:</label>
+	<input id="prefGenreId" type="number" min="1">
+	<button id="setPrefGenreButton">Set preferred genre</button>
+	<br>
+	<div id="prefGenreMessage" class="message"></div>
+	<label for="prefMechanicId">Preferred mechanic ID:</label>
+	<input id="prefMechanicId" type="number" min="1">
+	<button id="setPrefMechanicButton">Set preferred mechanic</button>
+	<br>
+	<div id="prefMechanicMessage" class="message"></div>
+
+	<hr>
+
+	<h2>Delete selected user</h2>
+	<p>Deletes the selected user from the database.</p>
+	<button id="deleteUserButton">Delete user</button>
+	<div id="deleteUserMessage" class="message"></div>
+
+	<script src="js/usermanagement.js"></script>
+</body>
+</html>

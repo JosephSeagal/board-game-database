@@ -45,4 +45,4 @@ You only need to run these setup scripts a) once at the beginning to create your
 
 # Running your app locally
 
-To run your app locally, run npm run start:local. Visit http://localhost:300 to view the site.
+To run your app locally, run `npm run start:local`. Visit http://localhost:3000 to view the site.
