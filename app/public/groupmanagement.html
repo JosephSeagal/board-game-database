@@ -6,197 +6,410 @@
     <link rel="stylesheet" type="text/css" href="css/navbar.css">
 </head>
 <body>
-    <nav class="navbar">
-        <ul class="navbar-menu">
-            <li><a href="index.html" class="navbar-item">Search Games</a></li>
-            <li><a href="simplesearch.html" class="navbar-item">Search Users/Groups</a></li>
-            <li><a href="usermanagement.html" class="navbar-item">Manage Users</a></li>
-            <li><a href="groupmanagement.html" class="navbar-item">Manage Groups</a></li>
-        </ul>
-    </nav>
+<nav class="navbar">
+    <ul class="navbar-menu">
+        <li><a href="index.html" class="navbar-item">Search Games</a></li>
+        <li><a href="simplesearch.html" class="navbar-item">Search Users/Groups</a></li>
+        <li><a href="usermanagement.html" class="navbar-item">Manage Users</a></li>
+        <li><a href="groupmanagement.html" class="navbar-item">Manage Groups</a></li>
+    </ul>
+</nav>
 
-    <h1>Group Information</h1>
+<h1>Group Information</h1>
 
-    <!-- JOIN A GROUP -->
-    <h2>Join a Group</h2>
-    <p>Type a username and pick a group to add this user to that group.</p>
+<!-- ======================== JOIN A GROUP ======================== -->
+<h2>Join a Group</h2>
 
-    <label for="joinUsername">Username:</label>
-    <input id="joinUsername" type="text" placeholder="Enter your username">
-    <br><br>
+<label for="joinUsername">Username:</label>
+<input id="joinUsername" type="text" placeholder="Enter your username">
 
-    <label for="joinGroupSelect">Available Groups:</label>
-    <select id="joinGroupSelect">
-        <option value="">-- Select a group --</option>
-    </select>
+<label for="availableGroups">Available Groups:</label>
+<select id="availableGroups">
+    <option value="">Enter a username first</option>
+</select>
 
-    <br><br>
-    <button id="joinGroupButton">Join Group</button>
-    <div id="joinGroupMessage" class="message"></div>
+<br>
+<button id="joinGroupBtn">Join Group</button>
+<div id="joinGroupMessage" class="message"></div>
 
-    <hr>
+<hr>
 
-    <!-- VIEW GROUP MEMBERS -->
-    <h2>View Group Members</h2>
-    <p>Select a group to see all its members.</p>
+<!-- ======================== VIEW GROUP MEMBERS ======================== -->
+<h2>View Group Members</h2>
 
-    <label for="membersGroupSelect">Group:</label>
-    <select id="membersGroupSelect">
-        <option value="">-- Select a group --</option>
-    </select>
+<label for="membersGroupSelect">Group:</label>
+<select id="membersGroupSelect">
+    <option value="">-- Select a Group --</option>
+</select>
 
-    <br><br>
-    <table>
-        <thead>
-            <tr>
-                <th>User ID</th>
-                <th>Username</th>
-            </tr>
-        </thead>
-        <tbody id="membersTableBody"></tbody>
-    </table>
-    <div id="membersMessage" class="message"></div>
+<button id="loadMembersBtn">Show Members</button>
 
-    <script>
-        // ----- Helper to populate BOTH dropdowns with ALL groups -----
-        async function loadAllGroups() {
-            try {
-                const res = await fetch("/groups");
-                const groups = await res.json();
+<table>
+    <thead>
+    <tr><th>User ID</th><th>Name</th></tr>
+    </thead>
+    <tbody id="membersTable"></tbody>
+</table>
 
-                const joinSelect = document.getElementById("joinGroupSelect");
-                const membersSelect = document.getElementById("membersGroupSelect");
+<hr>
 
-                // Clear existing options (except first placeholder)
-                joinSelect.length = 1;
-                membersSelect.length = 1;
+<!-- ======================== GROUP CRUD (like Manage Users) ======================== -->
 
-                for (const g of groups) {
-                    const opt1 = document.createElement("option");
-                    opt1.value = g.groupid;
-                    opt1.textContent = g.group_name;
-                    joinSelect.appendChild(opt1);
+<p>
+    <strong>Current Selected Group:</strong>
+    <span id="currentGroupText">None</span>
+</p>
 
-                    const opt2 = document.createElement("option");
-                    opt2.value = g.groupid;
-                    opt2.textContent = g.group_name;
-                    membersSelect.appendChild(opt2);
-                }
-            } catch (err) {
-                console.error("Error loading groups:", err);
-                document.getElementById("membersMessage").textContent =
-                    "Error loading groups.";
-            }
+<!-- CREATE GROUP -->
+<h2>Create a new group</h2>
+<p>This will insert a new group into the database.</p>
+
+<label for="newGroupName">Group name:</label>
+<input id="newGroupName" type="text">
+<br>
+
+<label for="newGroupAgeLimit">Age limit (optional):</label>
+<input id="newGroupAgeLimit" type="number" min="0">
+<br>
+
+<label for="newGroupBudget">Budget (optional):</label>
+<input id="newGroupBudget" type="number" min="0">
+<br>
+
+<button id="createGroupButton">Create group</button>
+<div id="createGroupMessage" class="message"></div>
+
+<hr>
+
+<!-- SELECT EXISTING GROUP -->
+<h2>Select existing group</h2>
+<p>Enter an existing group ID or name. This group will be used for the actions below.</p>
+
+<label for="selectedGroupId">Group ID:</label>
+<input id="selectedGroupId" type="number" min="1">
+
+<label for="selectedGroupName">or Name:</label>
+<input id="selectedGroupName" type="text">
+<br>
+
+<button id="loadGroupButton">Load group info</button>
+<div id="selectedGroupInfo" class="message"></div>
+
+<hr>
+
+<!-- UPDATE GROUP NAME -->
+<h2>Update selected group's name</h2>
+<p>Uses the selected group.</p>
+
+<label for="updateGroupName">New name:</label>
+<input id="updateGroupName" type="text">
+<br>
+
+<button id="updateGroupNameButton">Update group name</button>
+<div id="updateGroupNameMessage" class="message"></div>
+
+<hr>
+
+<!-- DELETE GROUP -->
+<h2>Delete selected group</h2>
+<p>Deletes the selected group from the database.</p>
+
+<button id="deleteGroupButton">Delete group</button>
+<div id="deleteGroupMessage" class="message"></div>
+
+<script>
+    // ---------- helpers ----------
+    async function fetchJson(url, options = {}) {
+        const res = await fetch(url, options);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || ('HTTP ' + res.status));
+        }
+        return res.json();
+    }
+
+    let currentGroupId = null;
+
+    // ---------- JOIN GROUP ----------
+    async function loadAvailableGroupsForUser() {
+        const username = document.getElementById("joinUsername").value.trim();
+        const select = document.getElementById("availableGroups");
+        select.innerHTML = "";
+
+        if (!username) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Enter a username first";
+            select.appendChild(opt);
+            return;
         }
 
-        // ----- Load members for selected group -----
-        async function loadGroupMembers(groupId) {
-            const body = document.getElementById("membersTableBody");
-            const msg = document.getElementById("membersMessage");
-
-            body.textContent = "";
-            msg.textContent = "";
-
-            if (!groupId) {
-                msg.textContent = "Please select a group.";
+        try {
+            const groups = await fetchJson("/groups/not-in?username=" + encodeURIComponent(username));
+            if (groups.length === 0) {
+                const opt = document.createElement("option");
+                opt.value = "";
+                opt.textContent = "No groups available";
+                select.appendChild(opt);
                 return;
             }
-
-            try {
-                const res = await fetch(`/group-members?groupid=${encodeURIComponent(groupId)}`);
-                const members = await res.json();
-
-                if (!Array.isArray(members) || members.length === 0) {
-                    msg.textContent = "This group has no members yet.";
-                    return;
-                }
-
-                for (const m of members) {
-                    const tr = document.createElement("tr");
-
-                    const tdId = document.createElement("td");
-                    tdId.textContent = m.userid;
-                    tr.appendChild(tdId);
-
-                    const tdName = document.createElement("td");
-                    tdName.textContent = m.name;
-                    tr.appendChild(tdName);
-
-                    body.appendChild(tr);
-                }
-            } catch (err) {
-                console.error("Error loading group members:", err);
-                msg.textContent = "Error loading group members.";
+            for (const g of groups) {
+                const opt = document.createElement("option");
+                opt.value = g.group_name;   // server /groups/join looks up by name
+                opt.textContent = g.group_name;
+                select.appendChild(opt);
             }
+        } catch (err) {
+            console.error(err);
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Error loading groups";
+            select.appendChild(opt);
+        }
+    }
+
+    async function joinSelectedGroup() {
+        const username = document.getElementById("joinUsername").value.trim();
+        const select   = document.getElementById("availableGroups");
+        const groupname = select.value;
+        const msg = document.getElementById("joinGroupMessage");
+        msg.textContent = "";
+
+        if (!username || !groupname) {
+            msg.textContent = "Please enter a username and select a group.";
+            return;
         }
 
-        // ----- Join group handler -----
-        async function joinSelectedGroup() {
-            const usernameInput = document.getElementById("joinUsername");
-            const joinSelect = document.getElementById("joinGroupSelect");
-            const msg = document.getElementById("joinGroupMessage");
-
-            const username = usernameInput.value.trim();
-            const groupId = joinSelect.value;
-            const groupName = joinSelect.options[joinSelect.selectedIndex]?.text;
-
-            msg.textContent = "";
-
-            if (!username) {
-                msg.textContent = "Please enter a username.";
-                return;
+        try {
+            await fetchJson("/groups/join", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, groupname })
+            });
+            msg.textContent = "Joined group successfully.";
+            // refresh members list if that group is currently selected
+            const membersSelect = document.getElementById("membersGroupSelect");
+            if (membersSelect.value) {
+                loadGroupMembers();
             }
-            if (!groupId) {
-                msg.textContent = "Please select a group.";
-                return;
+            // refresh available groups for this user (since one was just joined)
+            loadAvailableGroupsForUser();
+        } catch (err) {
+            console.error(err);
+            msg.textContent = "Failed to join group.";
+        }
+    }
+
+    // ---------- VIEW GROUP MEMBERS ----------
+    async function loadAllGroupsIntoDropdowns() {
+        try {
+            const groups = await fetchJson("/groups");
+
+            // members dropdown
+            const membersSelect = document.getElementById("membersGroupSelect");
+            membersSelect.innerHTML = '<option value="">-- Select a Group --</option>';
+            for (const g of groups) {
+                const opt = document.createElement("option");
+                opt.value = g.groupid;
+                opt.textContent = g.group_name;
+                membersSelect.appendChild(opt);
             }
 
-            try {
-                const res = await fetch("/groups/join", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        username: username,
-                        groupname: groupName        // server.js expects "groupname"
-                    })
-                });
+        } catch (err) {
+            console.error("Error loading groups for dropdowns:", err);
+        }
+    }
 
-                if (!res.ok) {
-                    const errBody = await res.json().catch(() => ({}));
-                    console.error("Join group error:", errBody);
-                    msg.textContent = errBody.error || "Failed to join group.";
-                    return;
-                }
+    async function loadGroupMembers() {
+        const select = document.getElementById("membersGroupSelect");
+        const groupid = select.value;
+        const tbody = document.getElementById("membersTable");
+        tbody.textContent = "";
 
-                msg.textContent = "Joined group successfully!";
+        if (!groupid) return;
 
-                // After joining, refresh members for this group
-                const membersSelect = document.getElementById("membersGroupSelect");
-                membersSelect.value = groupId;  // select same group in members dropdown
-                await loadGroupMembers(groupId);
-            } catch (err) {
-                console.error("Join group error:", err);
-                msg.textContent = "Failed to join group.";
+        try {
+            const members = await fetchJson("/group-members?groupid=" + encodeURIComponent(groupid));
+            for (const m of members) {
+                const tr = document.createElement("tr");
+                const td1 = document.createElement("td");
+                td1.textContent = m.userid;
+                const td2 = document.createElement("td");
+                td2.textContent = m.name;
+                tr.appendChild(td1);
+                tr.appendChild(td2);
+                tbody.appendChild(tr);
             }
+        } catch (err) {
+            console.error("Error loading members:", err);
+        }
+    }
+
+    // ---------- GROUP CRUD ----------
+    function setCurrentGroup(group) {
+        if (group) {
+            currentGroupId = group.groupid;
+            document.getElementById("currentGroupText").textContent =
+                `id=${group.groupid}, name=${group.group_name}, age_limit=${group.age_limit}, budget=${group.budget}`;
+        } else {
+            currentGroupId = null;
+            document.getElementById("currentGroupText").textContent = "None";
+        }
+    }
+
+    async function createGroup() {
+        const name     = document.getElementById("newGroupName").value.trim();
+        const ageLimit = document.getElementById("newGroupAgeLimit").value;
+        const budget   = document.getElementById("newGroupBudget").value;
+        const msg      = document.getElementById("createGroupMessage");
+        msg.textContent = "";
+
+        if (!name) {
+            msg.textContent = "Group name is required.";
+            return;
         }
 
-        // ----- Hook up events on page load -----
-        document.addEventListener("DOMContentLoaded", () => {
-            // Populate both dropdowns
-            loadAllGroups();
+        try {
+            const group = await fetchJson("/groups/create", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    groupName: name,
+                    ageLimit: ageLimit !== "" ? Number(ageLimit) : null,
+                    budget: budget !== "" ? Number(budget) : null
+                })
+            });
+            msg.textContent = `Created group with id=${group.groupid}.`;
+            document.getElementById("newGroupName").value = "";
+            document.getElementById("newGroupAgeLimit").value = "";
+            document.getElementById("newGroupBudget").value = "";
+            setCurrentGroup(group);
+            await loadAllGroupsIntoDropdowns();
+        } catch (err) {
+            console.error("Create group error:", err);
+            msg.textContent = "Error creating group.";
+        }
+    }
 
-            // When group in "View Group Members" changes
-            document.getElementById("membersGroupSelect")
-                .addEventListener("change", (e) => {
-                    loadGroupMembers(e.target.value);
-                });
+    async function loadExistingGroup() {
+        const idInput   = document.getElementById("selectedGroupId").value;
+        const nameInput = document.getElementById("selectedGroupName").value.trim();
+        const info      = document.getElementById("selectedGroupInfo");
+        info.textContent = "";
 
-            // When "Join Group" button clicked
-            document.getElementById("joinGroupButton")
-                .addEventListener("click", joinSelectedGroup);
-        });
-    </script>
+        if (!idInput && !nameInput) {
+            info.textContent = "Enter a group id or name.";
+            return;
+        }
+
+        const params = new URLSearchParams();
+        if (idInput)   params.append("groupid", idInput);
+        if (nameInput) params.append("groupname", nameInput);
+
+        try {
+            const group = await fetchJson("/groups/find?" + params.toString());
+            if (!group) {
+                info.textContent = "Group not found.";
+                setCurrentGroup(null);
+                return;
+            }
+            info.textContent =
+                `Selected: id=${group.groupid}, name=${group.group_name}, age_limit=${group.age_limit}, budget=${group.budget}`;
+            setCurrentGroup(group);
+        } catch (err) {
+            console.error("Load group error:", err);
+            info.textContent = "Error loading group.";
+        }
+    }
+
+    async function updateGroupName() {
+        const newName = document.getElementById("updateGroupName").value.trim();
+        const msg     = document.getElementById("updateGroupNameMessage");
+        msg.textContent = "";
+
+        if (!currentGroupId) {
+            msg.textContent = "Select a group first.";
+            return;
+        }
+        if (!newName) {
+            msg.textContent = "Enter a new name.";
+            return;
+        }
+
+        try {
+            const group = await fetchJson("/groups/update-name", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ groupid: currentGroupId, groupName: newName })
+            });
+            msg.textContent = "Group name updated.";
+            setCurrentGroup(group);
+            document.getElementById("updateGroupName").value = "";
+            await loadAllGroupsIntoDropdowns();
+        } catch (err) {
+            console.error("Update group name error:", err);
+            msg.textContent = "Error updating group name.";
+        }
+    }
+
+    async function deleteGroup() {
+        const msg = document.getElementById("deleteGroupMessage");
+        msg.textContent = "";
+
+        if (!currentGroupId) {
+            msg.textContent = "Select a group first.";
+            return;
+        }
+
+        if (!window.confirm("Are you sure you want to delete this group?")) {
+            return;
+        }
+
+        try {
+            await fetchJson("/groups/delete", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ groupid: currentGroupId })
+            });
+            msg.textContent = "Group deleted.";
+            setCurrentGroup(null);
+            document.getElementById("selectedGroupId").value = "";
+            document.getElementById("selectedGroupName").value = "";
+            await loadAllGroupsIntoDropdowns();
+            document.getElementById("membersTable").textContent = "";
+        } catch (err) {
+            console.error("Delete group error:", err);
+            msg.textContent = "Error deleting group.";
+        }
+    }
+
+    // ---------- wire up events ----------
+    document.getElementById("joinUsername")
+        .addEventListener("change", loadAvailableGroupsForUser);
+    document.getElementById("joinUsername")
+        .addEventListener("blur", loadAvailableGroupsForUser);
+
+    document.getElementById("joinGroupBtn")
+        .addEventListener("click", joinSelectedGroup);
+
+    document.getElementById("loadMembersBtn")
+        .addEventListener("click", loadGroupMembers);
+
+    document.getElementById("createGroupButton")
+        .addEventListener("click", createGroup);
+
+    document.getElementById("loadGroupButton")
+        .addEventListener("click", loadExistingGroup);
+
+    document.getElementById("updateGroupNameButton")
+        .addEventListener("click", updateGroupName);
+
+    document.getElementById("deleteGroupButton")
+        .addEventListener("click", deleteGroup);
+
+    // initial load
+    loadAllGroupsIntoDropdowns();
+</script>
+
 </body>
 </html>

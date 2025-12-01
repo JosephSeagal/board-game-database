@@ -106,7 +106,7 @@ app.get("/groups/not-in", async (req, res) => {
   try {
     // Step 1: Find user ID
     const userResult = await pool.query(
-      "SELECT userid FROM single_user WHERE name = $1",
+      "SELECT userid FROM single_user WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))",
       [username]
     );
 
@@ -215,14 +215,12 @@ app.get("/group-members", async (req, res) => {
   }
 });
 
-// ======================= GROUP CRUD ROUTES =======================
-
 // Create a new group
 app.post("/groups/create", async (req, res) => {
-  const { name, ageLimit, budget } = req.body;
+  const { groupName, ageLimit, budget } = req.body;
 
-  if (!name) {
-    return res.status(400).json({ error: "Group name is required." });
+  if (!groupName) {
+    return res.status(400).json({ error: "groupName is required." });
   }
 
   try {
@@ -233,7 +231,7 @@ app.post("/groups/create", async (req, res) => {
          $1, $2, $3
        )
        RETURNING groupid, group_name, age_limit, budget`,
-      [name, ageLimit, budget]
+      [groupName, ageLimit, budget]
     );
 
     res.status(201).json(result.rows[0]);
@@ -251,26 +249,24 @@ app.get("/groups/find", async (req, res) => {
     return res.status(400).json({ error: "groupid or groupname is required." });
   }
 
+  let query = "";
   let params = [];
-  let whereClause = "";
 
   if (groupid) {
-    whereClause = "g.groupid = $1";
+    query = `
+      SELECT groupid, group_name, age_limit, budget
+      FROM group_team
+      WHERE groupid = $1
+    `;
     params = [groupid];
   } else {
-    whereClause = "g.group_name = $1";
+    query = `
+      SELECT groupid, group_name, age_limit, budget
+      FROM group_team
+      WHERE group_name = $1
+    `;
     params = [groupname];
   }
-
-  const query = `
-    SELECT
-      g.groupid,
-      g.group_name,
-      g.age_limit,
-      g.budget
-    FROM group_team g
-    WHERE ${whereClause}
-  `;
 
   try {
     const result = await pool.query(query, params);
@@ -286,13 +282,13 @@ app.get("/groups/find", async (req, res) => {
 
 // Update group name
 app.post("/groups/update-name", async (req, res) => {
-  const { groupid, name } = req.body;
+  const { groupid, groupName } = req.body;
 
   if (!groupid) {
     return res.status(400).json({ error: "groupid is required." });
   }
-  if (!name) {
-    return res.status(400).json({ error: "New name is required." });
+  if (!groupName) {
+    return res.status(400).json({ error: "groupName is required." });
   }
 
   try {
@@ -301,7 +297,7 @@ app.post("/groups/update-name", async (req, res) => {
        SET group_name = $1
        WHERE groupid = $2
        RETURNING groupid, group_name, age_limit, budget`,
-      [name, groupid]
+      [groupName, groupid]
     );
 
     if (result.rowCount === 0) {
@@ -324,10 +320,9 @@ app.post("/groups/delete", async (req, res) => {
   }
 
   try {
-    // Remove memberships first
-    await pool.query(`DELETE FROM in_group WHERE groupid = $1`, [groupid]);
+    // clean up membership first
+    await pool.query("DELETE FROM in_group WHERE groupid = $1", [groupid]);
 
-    // Then delete the group itself
     const result = await pool.query(
       `DELETE FROM group_team
        WHERE groupid = $1
@@ -345,6 +340,7 @@ app.post("/groups/delete", async (req, res) => {
     res.status(500).json({ error: "Database error deleting group." });
   }
 });
+
 
 
 // Create a new user
