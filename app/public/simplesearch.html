@@ -15,37 +15,60 @@
         </ul>
     </nav>
 
-<h1>Simple Search</h1>
+	<h1>Simple Search</h1>
 
-<h2>Search for users and groups</h2>
+	<h2>Search for users and groups</h2>
 
-<button id="userSubmit">Search for Users</button>
+	<!-- ========== USER SEARCH ========== -->
+	<label for="usernameInput">Username (optional):</label>
+	<input id="usernameInput" type="text" placeholder="Enter username">
+	<br><br>
 
-<div id="userMessage"></div>
+	<button id="searchAllUsersButton">Search ALL Users</button>
+	<button id="searchUserByNameButton">Search by Username</button>
 
-<table>
-	<thead>
-		<tr><th>User ID</th><th>Name</th><th>Age</th><th>Budget</th></tr>
-	</thead>
-	<tbody id="users"></tbody>
-</table>
+	<div id="userMessage"></div>
 
-<p></p>
+	<table>
+		<thead>
+			<tr>
+				<th>User ID</th>
+				<th>Name</th>
+				<th>Age</th>
+				<th>Budget</th>
+			</tr>
+		</thead>
+		<tbody id="users"></tbody>
+	</table>
 
-<button id="clubSubmit">Search for Groups</button>
+	<p></p>
 
-<div id="clubMessage"></div>
+	<!-- ========== GROUP SEARCH ========== -->
+	<label for="groupNameInput">Group name (optional):</label>
+	<input id="groupNameInput" type="text" placeholder="Enter group name">
+	<br><br>
 
-<table>
-	<thead>
-		<tr><th>Group ID</th><th>Group Name</th><th>Age Limit</th><th>Budget</th</tr>
-	</thead>
-	<tbody id="bookclub"></tbody>
-</table>
+	<button id="searchAllGroupsButton">Search ALL Groups</button>
+	<button id="searchGroupByNameButton">Search by Group Name</button>
 
-<p></p>
+	<div id="clubMessage"></div>
 
-<script>
+	<table>
+		<thead>
+			<tr>
+				<th>Group ID</th>
+				<th>Group Name</th>
+				<th>Age Limit</th>
+				<th>Budget</th>
+			</tr>
+		</thead>
+		<tbody id="bookclub"></tbody>
+	</table>
+
+	<p></p>
+
+	<script>
+    // Generic fetch + render helper
     function fetchAndDisplayData(tableId, messageId, url) {
         let table = document.getElementById(tableId);
         let message = document.getElementById(messageId);
@@ -57,7 +80,7 @@
             .then((response) => response.json())
             .then((body) => {
                 console.log(body);
-                if (body.rows.length === 0) {
+                if (!body.rows || body.rows.length === 0) {
                     message.textContent = "No data found";
                     return;
                 }
@@ -85,14 +108,55 @@
             });
     }
 
-    document.getElementById("userSubmit").addEventListener("click", () => {
+    // 🔹 USERS: search all
+    document.getElementById("searchAllUsersButton").addEventListener("click", () => {
         fetchAndDisplayData("users", "userMessage", "/search?table=users");
     });
 
-    document.getElementById("clubSubmit").addEventListener("click", () => {
+    // 🔹 USERS: search by username
+    document.getElementById("searchUserByNameButton").addEventListener("click", () => {
+        const usernameInput = document.getElementById("usernameInput");
+        const username = usernameInput.value.trim();
+        const message = document.getElementById("userMessage");
+        const table = document.getElementById("users");
+
+        table.textContent = '';
+        message.textContent = '';
+
+        if (username === "") {
+            message.textContent = "Please enter a username.";
+            return;
+        }
+
+        const url = `/search?table=users&name=${encodeURIComponent(username)}`;
+        fetchAndDisplayData("users", "userMessage", url);
+    });
+
+    // 🔹 GROUPS: search all
+    document.getElementById("searchAllGroupsButton").addEventListener("click", () => {
         fetchAndDisplayData("bookclub", "clubMessage", "/search?table=clubs");
     });
-</script>
+
+    // 🔹 GROUPS: search by group name
+    document.getElementById("searchGroupByNameButton").addEventListener("click", () => {
+        const groupNameInput = document.getElementById("groupNameInput");
+        const groupName = groupNameInput.value.trim();
+        const message = document.getElementById("clubMessage");
+        const table = document.getElementById("bookclub");
+
+        table.textContent = '';
+        message.textContent = '';
+
+        if (groupName === "") {
+            message.textContent = "Please enter a group name.";
+            return;
+        }
+
+        const url = `/search?table=clubs&groupName=${encodeURIComponent(groupName)}`;
+        fetchAndDisplayData("bookclub", "clubMessage", url);
+    });
+	</script>
 
 </body>
 </html>
+

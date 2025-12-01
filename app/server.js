@@ -33,27 +33,48 @@ pool.connect()
   .catch(err => console.error("DB connection error:", err));
 
 app.get("/search", (req, res) => {
-  let table = req.query.table;
-  let query = '';
-  let param = []
+  const table      = req.query.table;
+  const name       = req.query.name;       // username filter
+  const groupName  = req.query.groupName;  // NEW: group name filter
 
-  if(table === 'users') {
-    query = `SELECT * FROM single_user`;
-  }
-  if(table === 'clubs') {
-    query = `SELECT * FROM group_team`;
+  let query = "";
+  let param = [];
+
+  if (table === "users") {
+    // ----- USERS (single_user view) -----
+    if (name && name.trim() !== "") {
+      query = "SELECT * FROM single_user WHERE LOWER(name) LIKE LOWER($1)";
+      param = [ `%${name.trim()}%` ];
+    } else {
+      query = "SELECT * FROM single_user";
+    }
+
+  } else if (table === "clubs") {
+    // ----- GROUPS (group_team view) -----
+    if (groupName && groupName.trim() !== "") {
+      query = "SELECT * FROM group_team WHERE LOWER(group_name) LIKE LOWER($1)";
+      param = [ `%${groupName.trim()}%` ];
+    } else {
+      query = "SELECT * FROM group_team";
+    }
+
+  } else {
+    return res.status(400).json({ rows: [] });
   }
 
-  pool.query(query, param)
+  pool
+    .query(query, param)
     .then((result) => {
-      console.log(result.rows);
-      return res.status(200).json({rows: result.rows})
+      res.json({ rows: result.rows });
     })
     .catch((error) => {
-      console.log(error)
-      return res.status(400).json({});
+      console.error("Error in /search route:", error);
+      res.status(500).json({ rows: [] });
     });
 });
+
+
+
 
 app.get("/search/games", async (req, res) => {
   const q = req.query.q || "";
