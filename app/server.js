@@ -215,6 +215,138 @@ app.get("/group-members", async (req, res) => {
   }
 });
 
+// ======================= GROUP CRUD ROUTES =======================
+
+// Create a new group
+app.post("/groups/create", async (req, res) => {
+  const { name, ageLimit, budget } = req.body;
+
+  if (!name) {
+    return res.status(400).json({ error: "Group name is required." });
+  }
+
+  try {
+    const result = await pool.query(
+      `INSERT INTO group_team (groupid, group_name, age_limit, budget)
+       VALUES (
+         (SELECT COALESCE(MAX(groupid), 0) + 1 FROM group_team),
+         $1, $2, $3
+       )
+       RETURNING groupid, group_name, age_limit, budget`,
+      [name, ageLimit, budget]
+    );
+
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error("Create group error:", err);
+    res.status(500).json({ error: "Database error creating group." });
+  }
+});
+
+// Find a single group by id or name
+app.get("/groups/find", async (req, res) => {
+  const { groupid, groupname } = req.query;
+
+  if (!groupid && !groupname) {
+    return res.status(400).json({ error: "groupid or groupname is required." });
+  }
+
+  let params = [];
+  let whereClause = "";
+
+  if (groupid) {
+    whereClause = "g.groupid = $1";
+    params = [groupid];
+  } else {
+    whereClause = "g.group_name = $1";
+    params = [groupname];
+  }
+
+  const query = `
+    SELECT
+      g.groupid,
+      g.group_name,
+      g.age_limit,
+      g.budget
+    FROM group_team g
+    WHERE ${whereClause}
+  `;
+
+  try {
+    const result = await pool.query(query, params);
+    if (result.rows.length === 0) {
+      return res.json(null);
+    }
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Find group error:", err);
+    res.status(500).json({ error: "Database error finding group." });
+  }
+});
+
+// Update group name
+app.post("/groups/update-name", async (req, res) => {
+  const { groupid, name } = req.body;
+
+  if (!groupid) {
+    return res.status(400).json({ error: "groupid is required." });
+  }
+  if (!name) {
+    return res.status(400).json({ error: "New name is required." });
+  }
+
+  try {
+    const result = await pool.query(
+      `UPDATE group_team
+       SET group_name = $1
+       WHERE groupid = $2
+       RETURNING groupid, group_name, age_limit, budget`,
+      [name, groupid]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Group not found." });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Update group name error:", err);
+    res.status(500).json({ error: "Database error updating group name." });
+  }
+});
+
+// Delete group
+app.post("/groups/delete", async (req, res) => {
+  const { groupid } = req.body;
+
+  if (!groupid) {
+    return res.status(400).json({ error: "groupid is required." });
+  }
+
+  try {
+    // Remove memberships first
+    await pool.query(`DELETE FROM in_group WHERE groupid = $1`, [groupid]);
+
+    // Then delete the group itself
+    const result = await pool.query(
+      `DELETE FROM group_team
+       WHERE groupid = $1
+       RETURNING groupid, group_name, age_limit, budget`,
+      [groupid]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Group not found." });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error("Delete group error:", err);
+    res.status(500).json({ error: "Database error deleting group." });
+  }
+});
+
+
 // Create a new user
 app.post("/users/create", async (req, res) => {
   const { name, age, budget } = req.body;
