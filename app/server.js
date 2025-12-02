@@ -33,25 +33,35 @@ pool.connect()
   .catch(err => console.error("DB connection error:", err));
 
 app.get("/search", (req, res) => {
-  const table = req.query.table;
-  const name  = req.query.name;   // optional username filter
+  const table     = req.query.table;
+  const name      = req.query.name;       // optional username filter
+  const groupName = req.query.groupName;  // optional group name filter
 
   let query = "";
   let param = [];
 
   if (table === "users") {
-    // base query: same view you originally used
+    // ----- USERS -----
     if (name && name.trim() !== "") {
-      // search by username (case-insensitive, partial)
+      // search users by name (case-insensitive, partial)
       query = "SELECT * FROM single_user WHERE LOWER(name) LIKE LOWER($1)";
       param = [`%${name.trim()}%`];
     } else {
-      // no name => all users
+      // no filter: all users
       query = "SELECT * FROM single_user";
     }
+
   } else if (table === "clubs") {
-    // groups unchanged
-    query = "SELECT * FROM group_team";
+    // ----- GROUPS -----
+    if (groupName && groupName.trim() !== "") {
+      // search groups by group_name (case-insensitive, partial)
+      query = "SELECT * FROM group_team WHERE LOWER(group_name) LIKE LOWER($1)";
+      param = [`%${groupName.trim()}%`];
+    } else {
+      // no filter: all groups
+      query = "SELECT * FROM group_team";
+    }
+
   } else {
     return res.status(400).json({ rows: [] });
   }
