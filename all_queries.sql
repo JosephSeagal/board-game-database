@@ -28,7 +28,39 @@ SELECT groupid, group_name, age_limit, budget
 FROM group_team
 WHERE groupid = $1;
 
+-- Select user preferred genre ids for user with userid $1
+SELECT genreid 
+FROM User_Preferred_Genre 
+WHERE userid = $1;
 
+-- Select games that match user preferred genre
+SELECT DISTINCT 
+    b.gameid AS id,
+    b.title,
+    b.description,
+    b.min_players,
+    b.max_players,
+    b.avg_rating,
+    b.price,
+    b.url
+FROM BoardGame b
+JOIN Game_Genre gg ON b.gameid = gg.gameid
+WHERE gg.genreid = ANY($1)
+ORDER BY b.title;
+
+-- Select board games based on filters: min players, max players, min rating, max price
+SELECT 
+    gameid AS id,
+    title,
+    description,
+    min_players,
+    max_players,
+    avg_rating,
+    price,
+    url
+FROM BoardGame
+${whereClause}
+ORDER BY title
 
 -- Find groups that the user with userid $1 is NOT a member of
 SELECT g.groupid, g.group_name
