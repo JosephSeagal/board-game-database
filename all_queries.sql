@@ -32,6 +32,17 @@ SELECT groupid FROM group_team WHERE group_name = $1;
 -- Insert a user with userid $1 into a group with groupid $2
 INSERT INTO in_group (userid, groupid) VALUES ($1, $2);
 
+-- Find groups that the user with userid is a member of
+SELECT DISTINCT g.groupid, g.group_name
+FROM in_group ig
+JOIN group_team g ON g.groupid = ig.groupid
+WHERE ig.userid = $1
+ORDER BY g.group_name;
+
+-- Remove a user from a group
+DELETE FROM in_group
+WHERE userid = $1 AND groupid = $2;
+
 -- Fetch all group IDs and names
 SELECT groupid, group_name FROM group_team ORDER BY group_name;
 
