@@ -57,6 +57,11 @@ input {
     margin-top: 8px;
 }
 
+select {
+    padding: 6px 12px;
+    margin-top: 8px;
+}
+
 hr {
     margin-top: 16px;
     margin-bottom: 16px;

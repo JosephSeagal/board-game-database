@@ -174,6 +174,78 @@ app.post("/groups/join", async (req, res) => {
   }
 });
 
+app.post("/groups/leave", async (req, res) => {
+  const { username, groupid } = req.body;
+
+  if (!username || !groupid) {
+    return res
+      .status(400)
+      .json({ error: "username and groupid are required." });
+  }
+
+  try {
+    const userResult = await pool.query(
+      "SELECT userid FROM single_user WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))",
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.status(400).json({ error: "User not found." });
+    }
+
+    const userid = userResult.rows[0].userid;
+
+    const deleteResult = await pool.query(
+      "DELETE FROM in_group WHERE userid = $1 AND groupid = $2",
+      [userid, groupid]
+    );
+
+    if (deleteResult.rowCount === 0) {
+      return res.status(404).json({ error: "Membership not found." });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error leaving group:", err);
+    res.status(500).json({ error: "Database error leaving group." });
+  }
+});
+
+app.get("/groups/of-user", async (req, res) => {
+  const { username } = req.query;
+
+  if (!username) {
+    return res.status(400).json({ error: "username is required" });
+  }
+
+  try {
+    const userResult = await pool.query(
+      "SELECT userid FROM single_user WHERE LOWER(TRIM(name)) = LOWER(TRIM($1))",
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.json([]);
+    }
+
+    const userid = userResult.rows[0].userid;
+
+    const groupsResult = await pool.query(
+      `SELECT DISTINCT g.groupid, g.group_name
+      FROM in_group ig
+      JOIN group_team g ON g.groupid = ig.groupid
+      WHERE ig.userid = $1
+      ORDER BY g.group_name`,
+      [userid]
+    );
+
+    res.json(groupsResult.rows);
+  } catch (err) {
+    console.error("Error fetching user's groups:", err);
+    res.status(500).json({ error: "Database error fetching user's groups" });
+  }
+});
+
 app.get("/groups", async (req, res) => {
   try {
     const result = await pool.query("SELECT groupid, group_name FROM group_team ORDER BY group_name;");

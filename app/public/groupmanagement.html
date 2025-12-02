@@ -34,6 +34,22 @@
 
 <hr>
 
+<h2>Leave a Group</h2>
+
+<label for="leaveUsername">Username:</label>
+<input id="leaveUsername" type="text" placeholder="Enter your username">
+
+<label for="userGroups">Your Groups:</label>
+<select id="userGroups">
+    <option value="">Enter a username first</option>
+</select>
+
+<br>
+<button id="leaveGroupBtn">Leave Group</button>
+<div id="leaveGroupMessage" class="message"></div>
+
+<hr>
+
 <!-- ======================== VIEW GROUP MEMBERS ======================== -->
 <h2>View Group Members</h2>
 
@@ -197,6 +213,85 @@
         } catch (err) {
             console.error(err);
             msg.textContent = "Failed to join group.";
+        }
+    }
+
+    // Leave Group
+    async function loadGroupsUserIsIn() {
+        const username = document.getElementById("leaveUsername").value.trim();
+        const select = document.getElementById("userGroups");
+        select.innerHTML = "";
+
+        if (!username) {
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Enter a username first";
+            select.appendChild(opt);
+            return;
+        }
+
+        try {
+            const groups = await fetchJson("/groups/of-user?username=" + encodeURIComponent(username));
+
+            if (groups.length === 0) {
+                const opt = document.createElement("option");
+                opt.value = "";
+                opt.textContent = "User is not in any groups";
+                select.appendChild(opt);
+                return;
+            }
+
+            const seen = new Set();
+            for (const g of groups) {
+                if (seen.has(g.groupid)) continue;
+                seen.add(g.groupid);
+
+                const opt = document.createElement("option");
+                opt.value = g.groupid;
+                opt.textContent = g.group_name;
+                select.appendChild(opt);
+            }
+        } catch (err) {
+            console.error(err);
+            const opt = document.createElement("option");
+            opt.value = "";
+            opt.textContent = "Error loading groups";
+            select.appendChild(opt);
+        }
+    }
+
+    async function leaveSelectedGroup() {
+        const username = document.getElementById("leaveUsername").value.trim();
+        const select   = document.getElementById("userGroups");
+        const groupid  = select.value;
+        const msg      = document.getElementById("leaveGroupMessage");
+        msg.textContent = "";
+
+        if (!username || !groupid) {
+            msg.textContent = "Please enter a username and select a group.";
+            return;
+        }
+
+        try {
+            await fetchJson("/groups/leave", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, groupid: Number(groupid) })
+            });
+
+            msg.textContent = "You have left the group.";
+
+            loadGroupsUserIsIn();
+
+            loadAvailableGroupsForUser();
+
+            const membersSelect = document.getElementById("membersGroupSelect");
+            if (membersSelect.value === String(groupid)) {
+                loadGroupMembers();
+            }
+        } catch (err) {
+            console.error(err);
+            msg.textContent = "Failed to leave group.";
         }
     }
 
@@ -391,6 +486,14 @@
 
     document.getElementById("joinGroupBtn")
         .addEventListener("click", joinSelectedGroup);
+
+    document.getElementById("leaveUsername")
+        .addEventListener("change", loadGroupsUserIsIn);
+    document.getElementById("leaveUsername")
+        .addEventListener("blur", loadGroupsUserIsIn);
+
+    document.getElementById("leaveGroupBtn")
+        .addEventListener("click", leaveSelectedGroup);
 
     document.getElementById("loadMembersBtn")
         .addEventListener("click", loadGroupMembers);
