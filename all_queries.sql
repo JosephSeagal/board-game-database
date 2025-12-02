@@ -13,8 +13,22 @@ WHERE LOWER(title) LIKE LOWER($1)
     OR LOWER(description) LIKE LOWER($1)
 ORDER BY title;
 
--- Find user ID based on username $1
-SELECT userid FROM single_user WHERE name = $1;
+-- Get userid by username (case-insensitive, ignore spaces)
+SELECT userid
+FROM single_user
+WHERE LOWER(TRIM(name)) = LOWER(TRIM($1));
+
+-- Get groupid by group name (case-insensitive, ignore spaces)
+SELECT groupid
+FROM group_team
+WHERE LOWER(TRIM(group_name)) = LOWER(TRIM($1));
+
+-- Select existing group by id
+SELECT groupid, group_name, age_limit, budget
+FROM group_team
+WHERE groupid = $1;
+
+
 
 -- Find groups that the user with userid $1 is NOT a member of
 SELECT g.groupid, g.group_name
@@ -123,3 +137,104 @@ WHERE userid = $1;
 DELETE FROM single_user
 WHERE userid = $1
 RETURNING userid, name, age, budget;
+
+
+
+
+--Search Queries--
+--Search Users 
+SELECT * FROM single_user
+WHERE LOWER(name) LIKE LOWER($1);
+
+--Search Groups 
+SELECT * FROM group_team
+WHERE LOWER(group_name) LIKE LOWER($1);
+
+--Search Games 
+SELECT gameid, title, description, min_players, max_players, avg_rating, price, url
+FROM boardgame
+WHERE LOWER(title) LIKE LOWER($1)
+   OR LOWER(description) LIKE LOWER($1)
+ORDER BY title;
+
+--GROUP MEMBERSHIP QUERIES--
+
+--Get Groups User is NOT In 
+SELECT userid FROM single_user WHERE name = $1;
+SELECT g.groupid, g.group_name
+FROM group_team g
+WHERE g.groupid NOT IN (
+    SELECT groupid
+    FROM in_group
+    WHERE userid = $1
+)
+ORDER BY g.group_name;
+
+--Join a Group-- 
+SELECT userid FROM single_user WHERE name = $1;
+SELECT groupid FROM group_team WHERE group_name = $1;
+
+INSERT INTO in_group (userid, groupid)
+VALUES ($1, $2);
+
+--Get All Groups 
+SELECT groupid, group_name
+FROM group_team
+ORDER BY group_name;
+
+--Get Users in a Group--
+SELECT u.userid, u.name
+FROM in_group ig
+JOIN single_user u ON ig.userid = u.userid
+WHERE ig.groupid = $1;
+
+--Create a group 
+INSERT INTO group_team (groupid, group_name, age_limit, budget)
+VALUES (
+  (SELECT COALESCE(MAX(groupid), 0) + 1 FROM group_team),
+  $1, $2, $3
+)
+RETURNING groupid, group_name, age_limit, budget;
+
+--Select existing group by name 
+SELECT groupid, group_name, age_limit, budget
+FROM group_team
+WHERE group_name = $1;
+
+--Updating selected group's name 
+UPDATE group_team
+SET group_name = $1
+WHERE groupid = $2
+RETURNING groupid, group_name, age_limit, budget;
+
+--Delete the selected group 
+--First remove all memberships for that group
+DELETE FROM in_group
+WHERE groupid = $1;
+
+--Then delete the group itself 
+DELETE FROM group_team
+WHERE groupid = $1
+RETURNING groupid, group_name, age_limit, budget;
+
+
+
+--Create a New User--
+INSERT INTO single_user (userid, name, age, budget)
+VALUES (
+    (SELECT COALESCE(MAX(userid), 0) + 1 FROM single_user),
+    $1, $2, $3
+)
+RETURNING userid, name, age, budget;
+
+--Find User by Username--
+SELECT
+    u.userid,
+    u.name,
+    u.age,
+    u.budget,
+    (SELECT gameid FROM user_favorite_game WHERE userid = u.userid LIMIT 1) AS fav_gameid,
+    (SELECT genreid FROM user_preferred_genre WHERE userid = u.userid LIMIT 1) AS pref_genreid,
+    (SELECT mechanicid FROM user_preferred_mechanic WHERE userid = u.userid LIMIT 1) AS pref_mechanicid
+FROM single_user u
+WHERE u.name = $1;
