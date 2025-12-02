@@ -89,6 +89,119 @@ app.get("/search/games", async (req, res) => {
   }
 });
 
+app.get("/search/games/by-user", async (req, res) => {
+  const { username } = req.query;
+
+  try {
+    // 1. Get userid by username
+    const userResult = await pool.query(
+      `SELECT userid FROM Single_User WHERE name = $1`,
+      [username]
+    );
+
+    if (userResult.rows.length === 0) {
+      return res.json({ rows: [] }); // frontend will show "No matching board games"
+    }
+
+    const userid = userResult.rows[0].userid;
+
+    // 2. Get preferred genres
+    const genres = await pool.query(
+      `SELECT genreid 
+        FROM User_Preferred_Genre 
+        WHERE userid = $1`,
+      [userid]
+    );
+
+    if (genres.rows.length === 0) {
+      return res.json({ rows: [] });
+    }
+
+    const genreIds = genres.rows.map(g => g.genreid);
+
+    // 3. Get games matching these genres
+    const games = await pool.query(
+      `SELECT DISTINCT 
+          b.gameid AS id,
+          b.title,
+          b.description,
+          b.min_players,
+          b.max_players,
+          b.avg_rating,
+          b.price,
+          b.url
+        FROM BoardGame b
+        JOIN Game_Genre gg ON b.gameid = gg.gameid
+        WHERE gg.genreid = ANY($1)
+        ORDER BY b.title`,
+      [genreIds]
+    );
+
+    res.json({ rows: games.rows });
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error." });
+  }
+});
+
+app.get("/search/games/filters", async (req, res) => {
+  const { min_players, max_players, min_rating, max_price } = req.query;
+
+  let conditions = [];
+  let values = [];
+  let i = 1; // parameter index for $1, $2, ...
+
+  if (min_players) {
+    conditions.push(`min_players >= $${i++}`);
+    values.push(min_players);
+  }
+
+  if (max_players) {
+    conditions.push(`max_players <= $${i++}`);
+    values.push(max_players);
+  }
+
+  if (min_rating) {
+    conditions.push(`avg_rating >= $${i++}`);
+    values.push(min_rating);
+  }
+
+  if (max_price) {
+    conditions.push(`price <= $${i++}`);
+    values.push(max_price);
+  }
+
+  // Build WHERE clause if filters exist
+  let whereClause = conditions.length > 0
+    ? "WHERE " + conditions.join(" AND ")
+    : "";
+
+  let query = `
+    SELECT 
+      gameid AS id,
+      title,
+      description,
+      min_players,
+      max_players,
+      avg_rating,
+      price,
+      url
+    FROM BoardGame
+    ${whereClause}
+    ORDER BY title
+  `;
+
+  try {
+    let result = await pool.query(query, values);
+    res.json({ rows: result.rows });
+  }
+  catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Server error." });
+  }
+});
+
 app.get("/groups/not-in", async (req, res) => {
   const { username } = req.query;
 

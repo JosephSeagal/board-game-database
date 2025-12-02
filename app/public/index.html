@@ -27,24 +27,60 @@
         <button id="searchButton">Search for Board Games</button>
     </div>
 
+    <div class="form">
+        <div>
+            <label for="username">Username:</label>
+            <input id="username" type="text" placeholder="Enter username">
+        </div>
+        <button id="userSearchButton">Find Games by Preferred Genres</button>
+    </div>
+
+    <h3>Filter Board Games</h3>
+
+    <div class="form">
+        <div>
+            <label for="filterMinPlayers">Min Players:</label>
+            <input id="filterMinPlayers" type="number" placeholder="e.g., 2">
+        </div>
+
+        <div>
+            <label for="filterMaxPlayers">Max Players:</label>
+            <input id="filterMaxPlayers" type="number" placeholder="e.g., 5">
+        </div>
+
+        <div>
+            <label for="filterRating">Minimum Rating:</label>
+            <input id="filterRating" type="number" step="0.01" placeholder="e.g., 7.5">
+        </div>
+
+        <div>
+            <label for="filterPrice">Maximum Price:</label>
+            <input id="filterPrice" type="number" step="0.01" placeholder="e.g., 60">
+        </div>
+
+        <button id="filterSearchButton">Search with Filters</button>
+    </div>
+
     <div id="boardgameMessage"></div>
 
     <table>
         <thead>
-            <tr><th>ID</th><th>Title</th><th>Description</th><th>Min Players</th><th>Max Players</th><th>Avg Rating</th><th>Price</th><th>URL</th></tr>
+            <tr>
+                <th>ID</th><th>Title</th><th>Description</th>
+                <th>Min Players</th><th>Max Players</th>
+                <th>Avg Rating</th><th>Price</th><th>URL</th>
+            </tr>
         </thead>
         <tbody id="boardgames"></tbody>
     </table>
 
     <script>
-        function fetchAndDisplayGames(keyword) {
+        function fetchAndDisplayGames(url) {
             let table = document.getElementById("boardgames");
             let message = document.getElementById("boardgameMessage");
 
             table.textContent = "";
             message.textContent = "";
-
-            let url = "/search/games?q=" + encodeURIComponent(keyword);
 
             fetch(url)
                 .then((response) => response.json())
@@ -58,14 +94,7 @@
                         let row = document.createElement("tr");
                         for (let key of Object.keys(item)) {
                             let col = document.createElement("td");
-
-                            if (item[key] === true) {
-                                col.textContent = "Yes";
-                            } else if (item[key] === false) {
-                                col.textContent = "No";
-                            } else {
-                                col.textContent = item[key];
-                            }
+                            col.textContent = item[key];
                             row.appendChild(col);
                         }
                         table.appendChild(row);
@@ -79,7 +108,31 @@
 
         document.getElementById("searchButton").addEventListener("click", () => {
             let keyword = document.getElementById("keyword").value.trim();
-            fetchAndDisplayGames(keyword);
+            let url = "/search/games?q=" + encodeURIComponent(keyword);
+            fetchAndDisplayGames(url);
+        });
+
+        document.getElementById("userSearchButton").addEventListener("click", () => {
+            let username = document.getElementById("username").value.trim();
+            let url = "/search/games/by-user?username=" + encodeURIComponent(username);
+            fetchAndDisplayGames(url);
+        });
+
+        document.getElementById("filterSearchButton").addEventListener("click", () => {
+            let params = new URLSearchParams();
+
+            let minP = document.getElementById("filterMinPlayers").value.trim();
+            let maxP = document.getElementById("filterMaxPlayers").value.trim();
+            let rating = document.getElementById("filterRating").value.trim();
+            let price = document.getElementById("filterPrice").value.trim();
+
+            if (minP) params.append("min_players", minP);
+            if (maxP) params.append("max_players", maxP);
+            if (rating) params.append("min_rating", rating);
+            if (price) params.append("max_price", price);
+
+            let url = "/search/games/filters?" + params.toString();
+            fetchAndDisplayGames(url);
         });
 
     </script>
